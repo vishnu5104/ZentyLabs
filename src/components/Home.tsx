@@ -3,11 +3,24 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PlusCircle, ImageIcon, Check, Sparkles, Palette } from 'lucide-react';
+
+//contract imp
+
+import { ethers } from 'ethers';
+
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface Collection {
   id: string;
@@ -31,6 +44,17 @@ const designs: Design[] = [
   { id: '4', name: 'Retro', preview: '/placeholder.svg?height=100&width=100' },
 ];
 
+const contractABI = [
+  'function mintNFT(string memory tokenURI, uint256 priceInTokens) external',
+  'function buyNFT(uint256 tokenId) external',
+  'function updateNFTPrice(uint256 tokenId, uint256 newPriceInTokens) external',
+  'function ownerOf(uint256 tokenId) view returns (address)',
+  'function nftPrices(uint256 tokenId) view returns (uint256)',
+  'function currentTokenId() view returns (uint256)',
+];
+
+const contractAddress = '0xCD860226DE7EF93dfCa85957981a39F39ce73707';
+
 export default function CreatePage() {
   const [activeTab, setActiveTab] = useState('collection');
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -49,9 +73,162 @@ export default function CreatePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  //contract  specific
+
+  const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
+  const [contract, setContract] = useState<ethers.Contract | null>(null);
+  const [account, setAccount] = useState<string | null>(null);
+  const [tokenURI, setTokenURI] = useState('');
+  const [mintPrice, setMintPrice] = useState('');
+  const [buyTokenId, setBuyTokenId] = useState('');
+  const [updateTokenId, setUpdateTokenId] = useState('');
+  const [newPrice, setNewPrice] = useState('');
+  const [status, setStatus] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
+  // const [isLoading, setIsLoading] = useState(false);
+
   useEffect(() => {
+    const init = async () => {
+      if (typeof window.ethereum !== 'undefined') {
+        const web3Provider = new ethers.BrowserProvider(window.ethereum);
+        setProvider(web3Provider);
+
+        const storedAccount = localStorage.getItem('account');
+        if (storedAccount) {
+          // Auto-connect wallet if account is saved in localStorage
+          await connectWallet();
+        }
+      }
+    };
+
+    init();
     fetchCollections();
   }, []);
+
+  // useEffect(() => {
+  //   fetchCollections();
+  // }, []);
+
+  //contract implementation
+  const connectWallet = async () => {
+    if (typeof window.ethereum === 'undefined') {
+      setStatus({
+        type: 'error',
+        message: 'No Ethereum wallet detected. Please install MetaMask.',
+      });
+      return;
+    }
+
+    try {
+      const web3Provider = new ethers.BrowserProvider(window.ethereum);
+      const [connectedAccount] = await web3Provider.send(
+        'eth_requestAccounts',
+        []
+      );
+      setProvider(web3Provider);
+      setAccount(connectedAccount);
+      localStorage.setItem('account', connectedAccount); // Save account to localStorage
+
+      const signer = await web3Provider.getSigner();
+      const nftContract = new ethers.Contract(
+        contractAddress,
+        contractABI,
+        signer
+      );
+      setContract(nftContract);
+
+      setStatus({
+        type: 'success',
+        message: 'Wallet connected successfully!',
+      });
+    } catch (error) {
+      console.error('Wallet connection error:', error);
+      setStatus({
+        type: 'error',
+        message: 'Failed to connect wallet. Please try again.',
+      });
+    }
+  };
+
+  const handleMint = async () => {
+    if (!contract) return;
+    setIsLoading(true);
+    try {
+      const signer = await provider?.getSigner();
+      const connectedContract = contract.connect(signer);
+      const tx = await connectedContract.mintNFT(
+        tokenURI,
+        ethers.parseEther(mintPrice)
+      );
+      await tx.wait();
+      setStatus({
+        type: 'success',
+        message: `Successfully minted NFT with URI: ${tokenURI} and price: ${mintPrice} tokens`,
+      });
+    } catch (error) {
+      console.error('Minting error:', error);
+      setStatus({
+        type: 'error',
+        message: `Failed to mint NFT: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+      });
+    }
+    setIsLoading(false);
+  };
+
+  const handleBuy = async () => {
+    if (!contract) return;
+    setIsLoading(true);
+    try {
+      const signer = await provider?.getSigner();
+      const connectedContract = contract.connect(signer);
+      const tx = await connectedContract.buyNFT(buyTokenId);
+      await tx.wait();
+      setStatus({
+        type: 'success',
+        message: `Successfully bought NFT with ID: ${buyTokenId}`,
+      });
+    } catch (error) {
+      console.error('Buying error:', error);
+      setStatus({
+        type: 'error',
+        message: `Failed to buy NFT: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+      });
+    }
+    setIsLoading(false);
+  };
+
+  const handleUpdatePrice = async () => {
+    if (!contract) return;
+    setIsLoading(true);
+    try {
+      const signer = await provider?.getSigner();
+      const connectedContract = contract.connect(signer);
+      const tx = await connectedContract.updateNFTPrice(
+        updateTokenId,
+        ethers.parseEther(newPrice)
+      );
+      await tx.wait();
+      setStatus({
+        type: 'success',
+        message: `Successfully updated price for NFT ID: ${updateTokenId} to ${newPrice} tokens`,
+      });
+    } catch (error) {
+      console.error('Update price error:', error);
+      setStatus({
+        type: 'error',
+        message: `Failed to update NFT price: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+      });
+    }
+    setIsLoading(false);
+  };
 
   const fetchCollections = async () => {
     try {
@@ -124,6 +301,41 @@ export default function CreatePage() {
   const handleTabChange = (value: string) => {
     setActiveTab(value);
   };
+
+  if (!account) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <Card className="w-[350px]">
+          <CardHeader>
+            <CardTitle>Connect Wallet</CardTitle>
+            <CardDescription>
+              You need to connect your Ethereum wallet to use this application.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={connectWallet} disabled={isLoading}>
+              Connect Wallet
+            </Button>
+            {status && (
+              <Alert
+                variant={status.type === 'error' ? 'destructive' : 'default'}
+              >
+                {status.type === 'error' ? (
+                  <AlertCircle className="h-4 w-4" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4" />
+                )}
+                <AlertTitle>
+                  {status.type === 'error' ? 'Error' : 'Success'}
+                </AlertTitle>
+                <AlertDescription>{status.message}</AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-8">
@@ -271,10 +483,11 @@ export default function CreatePage() {
                       id="nft-price"
                       type="number"
                       step="0.01"
-                      value={newNFT.price}
-                      onChange={(e) =>
-                        setNewNFT({ ...newNFT, price: e.target.value })
-                      }
+                      value={mintPrice}
+                      onChange={(e) => {
+                        setMintPrice(e.target.value);
+                        setNewNFT({ ...newNFT, price: e.target.value });
+                      }}
                       required
                       className="bg-white/10 text-white placeholder-white/50 border-white/20"
                     />
@@ -300,7 +513,7 @@ export default function CreatePage() {
                       ))}
                     </select>
                   </div>
-                  <div className="space-y-2">
+                  {/* <div className="space-y-2">
                     <Label htmlFor="nft-design" className="text-white">
                       Design
                     </Label>
@@ -329,7 +542,7 @@ export default function CreatePage() {
                         </Button>
                       ))}
                     </div>
-                  </div>
+                  </div> */}
                   <Button
                     type="submit"
                     className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white"

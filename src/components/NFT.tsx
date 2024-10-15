@@ -45,37 +45,59 @@ export default function NFTMarketplaceUI() {
   useEffect(() => {
     const init = async () => {
       if (typeof window.ethereum !== 'undefined') {
-        try {
-          const web3Provider = new ethers.BrowserProvider(window.ethereum);
-          setProvider(web3Provider);
-          const signer = await web3Provider.getSigner();
-          const nftContract = new ethers.Contract(
-            contractAddress,
-            contractABI,
-            signer
-          );
-          setContract(nftContract);
+        const web3Provider = new ethers.BrowserProvider(window.ethereum);
+        setProvider(web3Provider);
 
-          const [account] = await web3Provider.send('eth_requestAccounts', []);
-          setAccount(account);
-        } catch (error) {
-          console.error('Failed to initialize:', error);
-          setStatus({
-            type: 'error',
-            message:
-              'Failed to initialize. Please check your connection and try again.',
-          });
+        const storedAccount = localStorage.getItem('account');
+        if (storedAccount) {
+          // Auto-connect wallet if account is saved in localStorage
+          await connectWallet();
         }
-      } else {
-        setStatus({
-          type: 'error',
-          message: 'No Ethereum wallet detected. Please install MetaMask.',
-        });
       }
     };
 
     init();
   }, []);
+
+  const connectWallet = async () => {
+    if (typeof window.ethereum === 'undefined') {
+      setStatus({
+        type: 'error',
+        message: 'No Ethereum wallet detected. Please install MetaMask.',
+      });
+      return;
+    }
+
+    try {
+      const web3Provider = new ethers.BrowserProvider(window.ethereum);
+      const [connectedAccount] = await web3Provider.send(
+        'eth_requestAccounts',
+        []
+      );
+      setProvider(web3Provider);
+      setAccount(connectedAccount);
+      localStorage.setItem('account', connectedAccount); // Save account to localStorage
+
+      const signer = await web3Provider.getSigner();
+      const nftContract = new ethers.Contract(
+        contractAddress,
+        contractABI,
+        signer
+      );
+      setContract(nftContract);
+
+      setStatus({
+        type: 'success',
+        message: 'Wallet connected successfully!',
+      });
+    } catch (error) {
+      console.error('Wallet connection error:', error);
+      setStatus({
+        type: 'error',
+        message: 'Failed to connect wallet. Please try again.',
+      });
+    }
+  };
 
   const handleMint = async () => {
     if (!contract) return;
@@ -155,17 +177,36 @@ export default function NFTMarketplaceUI() {
     setIsLoading(false);
   };
 
-  if (!provider) {
+  if (!account) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
         <Card className="w-[350px]">
           <CardHeader>
-            <CardTitle>Web3 Not Detected</CardTitle>
+            <CardTitle>Connect Wallet</CardTitle>
             <CardDescription>
-              Please install MetaMask or another Web3 provider to use this
-              application.
+              You need to connect your Ethereum wallet to use this application.
             </CardDescription>
           </CardHeader>
+          <CardContent>
+            <Button onClick={connectWallet} disabled={isLoading}>
+              Connect Wallet
+            </Button>
+            {status && (
+              <Alert
+                variant={status.type === 'error' ? 'destructive' : 'default'}
+              >
+                {status.type === 'error' ? (
+                  <AlertCircle className="h-4 w-4" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4" />
+                )}
+                <AlertTitle>
+                  {status.type === 'error' ? 'Error' : 'Success'}
+                </AlertTitle>
+                <AlertDescription>{status.message}</AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
         </Card>
       </div>
     );
@@ -234,23 +275,6 @@ export default function NFTMarketplaceUI() {
             </div>
           </div>
         </CardContent>
-        <CardFooter>
-          {status && (
-            <Alert
-              variant={status.type === 'error' ? 'destructive' : 'default'}
-            >
-              {status.type === 'error' ? (
-                <AlertCircle className="h-4 w-4" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4" />
-              )}
-              <AlertTitle>
-                {status.type === 'error' ? 'Error' : 'Success'}
-              </AlertTitle>
-              <AlertDescription>{status.message}</AlertDescription>
-            </Alert>
-          )}
-        </CardFooter>
       </Card>
     </div>
   );

@@ -6,7 +6,7 @@ export default function Home() {
   return (
     <div>
       ZentyLabs
-      {/* <CreatePage /> */}
+      <CreatePage />
       {/* <SmartContractUI /> */}
       <NFTMarketplaceUI />
     </div>
