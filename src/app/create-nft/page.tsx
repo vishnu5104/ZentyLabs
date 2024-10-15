@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 
 export default function Home() {
@@ -14,8 +14,6 @@ export default function Home() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingMetadata, setUploadingMetadata] = useState(false);
 
-  //  for craete nft on chain
-
   const uploadImage = async () => {
     try {
       if (!image) {
@@ -28,7 +26,6 @@ export default function Home() {
       const formData = new FormData();
       formData.append('file', image);
 
-      // Accessing Pinata JWT from environment variable
       const PINATA_JWT = process.env.NEXT_PUBLIC_PINATA_JWT;
 
       const imageUploadRequest = await fetch(
@@ -135,7 +132,6 @@ export default function Home() {
         onChange={(e) => setPrice(e.target.value)}
         className="mb-4 p-2 border rounded"
       />
-      {/* later it be link drop dowmn to select teh cole they creatyed  */}
 
       <input
         type="text"
@@ -158,8 +154,6 @@ export default function Home() {
         {uploadingImage ? 'Uploading Image...' : 'Upload Image'}
       </button>
 
-      {/* {imageUrl && <p className="mb-4">Image IPFS URL: {imageUrl}</p>} */}
-
       <button
         disabled={uploadingMetadata || !imageUrl}
         onClick={uploadMetadata}
@@ -171,7 +165,6 @@ export default function Home() {
       <Link href="/nft" passHref>
         <button>List NFT</button>
       </Link>
-      {/* {url && <p>Metadata IPFS URL: {url}</p>} */}
     </main>
   );
 }
