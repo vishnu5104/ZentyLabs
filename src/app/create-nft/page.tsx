@@ -47,6 +47,8 @@ export default function Home() {
 
       const ipfsUrl = `https://gateway.pinata.cloud/ipfs/${imageUploadResponse.IpfsHash}`;
       setImageUrl(ipfsUrl);
+
+      console.log('he ip', ipfsUrl);
     } catch (e) {
       console.error(e);
       alert(
@@ -94,6 +96,7 @@ export default function Home() {
         throw new Error('Failed to upload metadata to IPFS');
       }
       const metadataurl = `https://gateway.pinata.cloud/ipfs/${metadataUploadResponse.IpfsHash}`;
+      console.log(metadataurl);
       setUrl(metadataurl);
     } catch (e) {
       console.error(e);

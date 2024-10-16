@@ -89,6 +89,18 @@ export default function CreatePage() {
   } | null>(null);
   // const [isLoading, setIsLoading] = useState(false);
 
+  // ipfs upload uri
+
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [price, setPrice] = useState('');
+  const [colkey, setcolkey] = useState('');
+  const [image, setImage] = useState<File | null>(null);
+  const [imageUrl, setImageUrl] = useState('');
+  const [url, setUrl] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingMetadata, setUploadingMetadata] = useState(false);
+
   useEffect(() => {
     const init = async () => {
       if (typeof window.ethereum !== 'undefined') {
@@ -104,7 +116,7 @@ export default function CreatePage() {
     };
 
     init();
-    fetchCollections();
+    // fetchCollections();
   }, []);
 
   // useEffect(() => {
@@ -150,6 +162,107 @@ export default function CreatePage() {
         message: 'Failed to connect wallet. Please try again.',
       });
     }
+  };
+
+  // ipfs upload
+
+  const uploadImage = async () => {
+    try {
+      if (!image) {
+        alert('Please select an image');
+        return;
+      }
+
+      setUploadingImage(true);
+
+      const formData = new FormData();
+      formData.append('file', image);
+
+      const PINATA_JWT = process.env.NEXT_PUBLIC_PINATA_JWT;
+
+      const imageUploadRequest = await fetch(
+        'https://api.pinata.cloud/pinning/pinFileToIPFS',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${PINATA_JWT}`,
+          },
+          body: formData,
+        }
+      );
+
+      const imageUploadResponse = await imageUploadRequest.json();
+
+      if (!imageUploadRequest.ok) {
+        throw new Error('Failed to upload image to IPFS');
+      }
+
+      const ipfsUrl = `https://gateway.pinata.cloud/ipfs/${imageUploadResponse.IpfsHash}`;
+      setImageUrl(ipfsUrl);
+
+      console.log('he ip', ipfsUrl);
+    } catch (e) {
+      console.error(e);
+      alert(
+        'Error uploading image: ' + (e instanceof Error ? e.message : String(e))
+      );
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const uploadMetadata = async () => {
+    try {
+      if (!newNFT.name || !newNFT.description || !imageUrl) {
+        alert('Please provide name, description, and upload an image');
+        return;
+      }
+
+      setUploadingMetadata(true);
+
+      const metadata = {
+        owner: 'oxgfuyhkbngjkbngfmgflh',
+        name: newNFT.name,
+        description: newNFT.description,
+        image: imageUrl,
+        price: newNFT.price,
+      };
+
+      const PINATA_JWT = process.env.NEXT_PUBLIC_PINATA_JWT;
+
+      const metadataUploadRequest = await fetch(
+        'https://api.pinata.cloud/pinning/pinJSONToIPFS',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${PINATA_JWT}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(metadata),
+        }
+      );
+
+      const metadataUploadResponse = await metadataUploadRequest.json();
+
+      if (!metadataUploadRequest.ok) {
+        throw new Error('Failed to upload metadata to IPFS');
+      }
+      const metadataurl = `https://gateway.pinata.cloud/ipfs/${metadataUploadResponse.IpfsHash}`;
+      console.log(metadataurl);
+      setUrl(metadataurl);
+    } catch (e) {
+      console.error(e);
+      alert(
+        'Error uploading metadata: ' +
+          (e instanceof Error ? e.message : String(e))
+      );
+    } finally {
+      setUploadingMetadata(false);
+    }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setImage(e.target?.files?.[0] || null);
   };
 
   const handleMint = async () => {
@@ -230,73 +343,73 @@ export default function CreatePage() {
     setIsLoading(false);
   };
 
-  const fetchCollections = async () => {
-    try {
-      const response = await fetch('/api/collections');
-      if (!response.ok) throw new Error('Failed to fetch collections');
-      const data = await response.json();
-      setCollections(data);
-    } catch (err) {
-      setError('Failed to load collections. Please try again.');
-    }
-  };
+  // const fetchCollections = async () => {
+  //   try {
+  //     const response = await fetch('/api/collections');
+  //     if (!response.ok) throw new Error('Failed to fetch collections');
+  //     const data = await response.json();
+  //     setCollections(data);
+  //   } catch (err) {
+  //     setError('Failed to load collections. Please try again.');
+  //   }
+  // };
 
-  const createCollection = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await fetch('/api/collections', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newCollection),
-      });
-      if (!response.ok) throw new Error('Failed to create collection');
-      const data = await response.json();
-      setCollections([...collections, data]);
-      setNewCollection({ name: '', description: '' });
-      setShowSuccess(true);
-      setTimeout(() => {
-        setShowSuccess(false);
-        setActiveTab('nft'); // Automatically move to the 'Create NFT' tab
-      }, 2000);
-    } catch (err) {
-      setError('Failed to create collection. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // const createCollection = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   setIsLoading(true);
+  //   setError(null);
+  //   try {
+  //     const response = await fetch('/api/collections', {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify(newCollection),
+  //     });
+  //     if (!response.ok) throw new Error('Failed to create collection');
+  //     const data = await response.json();
+  //     setCollections([...collections, data]);
+  //     setNewCollection({ name: '', description: '' });
+  //     setShowSuccess(true);
+  //     setTimeout(() => {
+  //       setShowSuccess(false);
+  //       setActiveTab('nft'); // Automatically move to the 'Create NFT' tab
+  //     }, 2000);
+  //   } catch (err) {
+  //     setError('Failed to create collection. Please try again.');
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
 
-  const createNFT = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await fetch('/api/nfts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newNFT),
-      });
-      if (!response.ok) throw new Error('Failed to create NFT');
-      await response.json();
-      setNewNFT({
-        name: '',
-        description: '',
-        price: '',
-        collectionId: '',
-        designId: '',
-      });
-      setShowSuccess(true);
-      setTimeout(() => {
-        setShowSuccess(false);
-        setActiveTab('preview'); // Automatically move to the 'Preview NFT' tab
-      }, 2000);
-    } catch (err) {
-      setError('Failed to create NFT. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // const createNFT = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   setIsLoading(true);
+  //   setError(null);
+  //   try {
+  //     const response = await fetch('/api/nfts', {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify(newNFT),
+  //     });
+  //     if (!response.ok) throw new Error('Failed to create NFT');
+  //     await response.json();
+  //     setNewNFT({
+  //       name: '',
+  //       description: '',
+  //       price: '',
+  //       collectionId: '',
+  //       designId: '',
+  //     });
+  //     setShowSuccess(true);
+  //     setTimeout(() => {
+  //       setShowSuccess(false);
+  //       setActiveTab('preview'); // Automatically move to the 'Preview NFT' tab
+  //     }, 2000);
+  //   } catch (err) {
+  //     setError('Failed to create NFT. Please try again.');
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -384,59 +497,56 @@ export default function CreatePage() {
                 <CardTitle className="text-white">Collection Details</CardTitle>
               </CardHeader>
               <CardContent>
-                <form onSubmit={createCollection} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="collection-name" className="text-white">
-                      Collection Name
-                    </Label>
-                    <Input
-                      id="collection-name"
-                      value={newCollection.name}
-                      onChange={(e) =>
-                        setNewCollection({
-                          ...newCollection,
-                          name: e.target.value,
-                        })
-                      }
-                      required
-                      className="bg-white/10 text-white placeholder-white/50 border-white/20"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="collection-description"
-                      className="text-white"
-                    >
-                      Description
-                    </Label>
-                    <Input
-                      id="collection-description"
-                      value={newCollection.description}
-                      onChange={(e) =>
-                        setNewCollection({
-                          ...newCollection,
-                          description: e.target.value,
-                        })
-                      }
-                      required
-                      className="bg-white/10 text-white placeholder-white/50 border-white/20"
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    className="w-full bg-gradient-to-r from-pink-500 to-yellow-500 hover:from-pink-600 hover:to-yellow-600 text-white"
-                    disabled={isLoading}
+                <div className="space-y-2">
+                  <Label htmlFor="collection-name" className="text-white">
+                    Collection Name
+                  </Label>
+                  <Input
+                    id="collection-name"
+                    value={newCollection.name}
+                    onChange={(e) =>
+                      setNewCollection({
+                        ...newCollection,
+                        name: e.target.value,
+                      })
+                    }
+                    required
+                    className="bg-white/10 text-white placeholder-white/50 border-white/20"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="collection-description"
+                    className="text-white"
                   >
-                    {isLoading ? (
-                      'Creating...'
-                    ) : (
-                      <>
-                        <PlusCircle className="mr-2 h-4 w-4" /> Create
-                        Collection
-                      </>
-                    )}
-                  </Button>
-                </form>
+                    Description
+                  </Label>
+                  <Input
+                    id="collection-description"
+                    value={newCollection.description}
+                    onChange={(e) =>
+                      setNewCollection({
+                        ...newCollection,
+                        description: e.target.value,
+                      })
+                    }
+                    required
+                    className="bg-white/10 text-white placeholder-white/50 border-white/20"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-pink-500 to-yellow-500 hover:from-pink-600 hover:to-yellow-600 text-white"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    'Creating...'
+                  ) : (
+                    <>
+                      <PlusCircle className="mr-2 h-4 w-4" /> Create Collection
+                    </>
+                  )}
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
@@ -446,63 +556,59 @@ export default function CreatePage() {
                 <CardTitle className="text-white">NFT Details</CardTitle>
               </CardHeader>
               <CardContent>
-                <form onSubmit={createNFT} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="nft-name" className="text-white">
-                      NFT Name
-                    </Label>
-                    <Input
-                      id="nft-name"
-                      value={newNFT.name}
-                      onChange={(e) =>
-                        setNewNFT({ ...newNFT, name: e.target.value })
-                      }
-                      required
-                      className="bg-white/10 text-white placeholder-white/50 border-white/20"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="nft-description" className="text-white">
-                      Description
-                    </Label>
-                    <Input
-                      id="nft-description"
-                      value={newNFT.description}
-                      onChange={(e) =>
-                        setNewNFT({ ...newNFT, description: e.target.value })
-                      }
-                      required
-                      className="bg-white/10 text-white placeholder-white/50 border-white/20"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="nft-price" className="text-white">
-                      Price (ETH)
-                    </Label>
-                    <Input
-                      id="nft-price"
-                      type="number"
-                      step="0.01"
-                      value={mintPrice}
-                      onChange={(e) => {
-                        setMintPrice(e.target.value);
-                        setNewNFT({ ...newNFT, price: e.target.value });
-                      }}
-                      required
-                      className="bg-white/10 text-white placeholder-white/50 border-white/20"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="nft-collection" className="text-white">
-                      Collection
-                    </Label>
-                    <select
+                <div className="space-y-2">
+                  <Label htmlFor="nft-name" className="text-white">
+                    NFT Name
+                  </Label>
+                  <Input
+                    id="nft-name"
+                    value={newNFT.name}
+                    onChange={(e) =>
+                      setNewNFT({ ...newNFT, name: e.target.value })
+                    }
+                    required
+                    className="bg-white/10 text-white placeholder-white/50 border-white/20"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="nft-description" className="text-white">
+                    Description
+                  </Label>
+                  <Input
+                    id="nft-description"
+                    value={newNFT.description}
+                    onChange={(e) =>
+                      setNewNFT({ ...newNFT, description: e.target.value })
+                    }
+                    required
+                    className="bg-white/10 text-white placeholder-white/50 border-white/20"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="nft-price" className="text-white">
+                    Price (ETH)
+                  </Label>
+                  <Input
+                    id="nft-price"
+                    type="number"
+                    step="0.01"
+                    value={newNFT.price}
+                    onChange={(e) => {
+                      setNewNFT({ ...newNFT, price: e.target.value });
+                    }}
+                    required
+                    className="bg-white/10 text-white placeholder-white/50 border-white/20"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="nft-collection" className="text-white">
+                    Collection
+                  </Label>
+                  {/* <select
                       id="nft-collection"
                       className="w-full bg-white/10 text-white border-white/20 rounded-md p-2"
                       value={newNFT.collectionId}
-                      onChange={(e) =>
-                        setNewNFT({ ...newNFT, collectionId: e.target.value })
-                      }
+                      onChange={(e) => setcolkey(e.target.value)}
                       required
                     >
                       <option value="">Select a collection</option>
@@ -511,9 +617,16 @@ export default function CreatePage() {
                           {collection.name}
                         </option>
                       ))}
-                    </select>
-                  </div>
-                  {/* <div className="space-y-2">
+                    </select> */}
+                  <input
+                    type="text"
+                    placeholder="Collection Key"
+                    value={colkey}
+                    onChange={(e) => setcolkey(e.target.value)}
+                    className="mb-4 p-2 border rounded"
+                  />
+                </div>
+                {/* <div className="space-y-2">
                     <Label htmlFor="nft-design" className="text-white">
                       Design
                     </Label>
@@ -543,20 +656,40 @@ export default function CreatePage() {
                       ))}
                     </div>
                   </div> */}
-                  <Button
-                    type="submit"
-                    className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      'Creating...'
-                    ) : (
-                      <>
-                        <ImageIcon className="mr-2 h-4 w-4" /> Create NFT
-                      </>
-                    )}
-                  </Button>
-                </form>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="mb-4"
+                />
+                <Button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white"
+                  disabled={isLoading}
+                  onClick={uploadImage}
+                >
+                  {isLoading ? (
+                    'Creating...'
+                  ) : (
+                    <>
+                      <ImageIcon className="mr-2 h-4 w-4" /> Create NFT
+                    </>
+                  )}
+                </Button>
+                <Button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white"
+                  disabled={isLoading}
+                  onClick={uploadMetadata}
+                >
+                  {isLoading ? (
+                    'Creating...'
+                  ) : (
+                    <>
+                      <ImageIcon className="mr-2 h-4 w-4" /> Create Metadata
+                    </>
+                  )}
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
