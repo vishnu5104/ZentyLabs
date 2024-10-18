@@ -249,6 +249,7 @@ export default function CreatePage() {
       }
       const metadataurl = `https://gateway.pinata.cloud/ipfs/${metadataUploadResponse.IpfsHash}`;
       console.log(metadataurl);
+      setTokenURI(metadataurl);
       setUrl(metadataurl);
     } catch (e) {
       console.error(e);
@@ -273,7 +274,7 @@ export default function CreatePage() {
       const connectedContract = contract.connect(signer);
       const tx = await connectedContract.mintNFT(
         tokenURI,
-        ethers.parseEther(mintPrice)
+        ethers.parseEther(newNFT.price)
       );
       await tx.wait();
       setStatus({
@@ -687,6 +688,20 @@ export default function CreatePage() {
                   ) : (
                     <>
                       <ImageIcon className="mr-2 h-4 w-4" /> Create Metadata
+                    </>
+                  )}
+                </Button>
+                <Button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white"
+                  disabled={isLoading}
+                  onClick={handleMint}
+                >
+                  {isLoading ? (
+                    'Creating...'
+                  ) : (
+                    <>
+                      <ImageIcon className="mr-2 h-4 w-4" /> Mint NFT
                     </>
                   )}
                 </Button>
