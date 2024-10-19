@@ -53,7 +53,7 @@ const contractABI = [
   'function currentTokenId() view returns (uint256)',
 ];
 
-const contractAddress = '0xb5d998316A7f8Db974e6E47f635A99F04ea0d586';
+const contractAddress = '0x28045BAF8af06cdc5cd0caBe15BE4520012D8198';
 
 export default function CreatePage() {
   const [activeTab, setActiveTab] = useState('collection');

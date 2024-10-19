@@ -12,6 +12,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+import { useRouter } from 'next/navigation';
+
 const contractABI = [
   {
     inputs: [
@@ -68,7 +70,7 @@ const contractABI = [
   },
 ];
 
-const contractAddress = '0xb5d998316A7f8Db974e6E47f635A99F04ea0d586';
+const contractAddress = '0x28045BAF8af06cdc5cd0caBe15BE4520012D8198';
 const paymentTokenABI = [
   'function approve(address spender, uint256 amount) public returns (bool)',
   'function allowance(address owner, address spender) public view returns (uint256)',
@@ -80,6 +82,7 @@ export default function NFTMarketplace() {
   const [sortBy, setSortBy] = useState('price');
   const [contract, setContract] = useState(null);
   const [paymentToken, setPaymentToken] = useState(null);
+  const router = useRouter();
 
   useEffect(() => {
     const initializeContract = async () => {
@@ -115,6 +118,10 @@ export default function NFTMarketplace() {
 
     initializeContract();
   }, []);
+
+  const handleCardClick = (nft) => {
+    router.push(`/nft/${nft.id}?${new URLSearchParams(nft).toString()}`);
+  };
 
   const fetchNFTs = async (nftContract) => {
     try {
@@ -224,7 +231,8 @@ export default function NFTMarketplace() {
         {filteredNFTs.map((nft) => (
           <div
             key={nft.id}
-            className="bg-white rounded-lg shadow-md overflow-hidden"
+            className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer"
+            onClick={() => handleCardClick(nft)}
           >
             <img
               src={nft.image}

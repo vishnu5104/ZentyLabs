@@ -5,8 +5,8 @@ export default function Home() {
   return (
     <div>
       ZentyLabs
-      {/* <NFTMarketplace /> */}
-      <CreatePage />
+      <NFTMarketplace />
+      {/* <CreatePage /> */}
     </div>
   );
 }
