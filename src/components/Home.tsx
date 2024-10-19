@@ -53,7 +53,7 @@ const contractABI = [
   'function currentTokenId() view returns (uint256)',
 ];
 
-const contractAddress = '0xCD860226DE7EF93dfCa85957981a39F39ce73707';
+const contractAddress = '0xb5d998316A7f8Db974e6E47f635A99F04ea0d586';
 
 export default function CreatePage() {
   const [activeTab, setActiveTab] = useState('collection');
@@ -752,6 +752,13 @@ export default function CreatePage() {
                   className="w-full mt-4 bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white"
                 >
                   <Palette className="mr-2 h-4  w-4" /> Edit NFT
+                </Button>
+
+                <Button
+                  onClick={() => {}}
+                  className="w-full mt-4 bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white"
+                >
+                  <Palette className="mr-2 h-4  w-4" /> View In Marketplace
                 </Button>
               </CardContent>
             </Card>
