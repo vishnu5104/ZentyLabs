@@ -49,11 +49,11 @@ class MenuScene extends Phaser.Scene {
         await this.connectWallet();
 
         // Handle Play button click
-        this.playButton.on("pointerdown", () => {
 
-            console.log('the wallet ', typeof(this.walletAddress))
-            if (this.walletAddress.toLowerCase().startsWith("0x0c467c60e97221de6cd9".toLowerCase())) {
-                this.scene.start("PlayScene");
+        
+        this.playButton.on("pointerdown", () => {
+            if (this.walletAddress && this.walletAddress.startsWith("0x0C467c60e97221de6cD9")) {
+                this.scene.start("PlaySscene");
             } else {
                 console.log('Wallet not connected or invalid');
             }

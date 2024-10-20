@@ -1,75 +1,129 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { ethers } from 'ethers';
 
-import { useRouter } from 'next/navigation';
-import { EventBus } from '../app/gamebuilder/EventBus';
+const contractAddress = '0xDB9c3B477481c33A908ff0F035C9a60566091F67';
 
-// umi.use(dasApi());
+const contractABI = [
+  'function currentTokenId() view returns (uint256)',
+  'function nftPrices(uint256) view returns (uint256)',
+  'function allTokenIds(uint256) view returns (uint256)',
+  'function mintNFT(string memory tokenURI, uint256 priceInWei)',
+  'function buyNFT(uint256 tokenId) payable',
+  'function updateNFTPrice(uint256 tokenId, uint256 newPriceInWei)',
+  'function getAllMintedNFTs() view returns (uint256[] memory)',
+  'function getTotalMintedNFTs() view returns (uint256)',
+  'function getAllTokenURIs() view returns (string[] memory)',
+  'function getUserOwnedNFTs(address user) view returns (uint256[] memory)',
+  'function isowner(address owner, uint256 ownertokenID) view returns (bool)',
+  'function getUserOwnedNFTURIs(address user) view returns (string[] memory)',
+  'function tokenURI(uint256 tokenId) view returns (string memory)',
+];
 
 export default function LeftSidebar() {
-  // const wallet = useWallet();
-  // const walletid = wallet.publicKey?.toBase58(); // Get wallet public key as string
-  const [assets, setAssets] = useState([]);
+  const [nfts, setNfts] = useState([]);
   const [error, setError] = useState('');
+  const [contract, setContract] = useState(null);
+  const [account, setAccount] = useState('');
 
-  // Fetch assets once the wallet is connected and public key is available
+  useEffect(() => {
+    const initializeContract = async () => {
+      if (typeof window.ethereum !== 'undefined') {
+        try {
+          await window.ethereum.request({ method: 'eth_requestAccounts' });
+          const provider = new ethers.BrowserProvider(window.ethereum);
+          const signer = await provider.getSigner();
+          const nftContract = new ethers.Contract(
+            contractAddress,
+            contractABI,
+            signer
+          );
+          setContract(nftContract);
+          setAccount(await signer.getAddress());
 
-  const fetchAssetsByOwner = async (walletId) => {
+          fetchAllNFTs(nftContract);
+        } catch (error) {
+          console.error('Failed to initialize contract:', error);
+          setError(
+            'Failed to connect to the blockchain. Please check your wallet connection.'
+          );
+        }
+      } else {
+        setError(
+          'Please install MetaMask or another Ethereum wallet to use this application.'
+        );
+      }
+    };
+
+    initializeContract();
+  }, []);
+
+  const fetchAllNFTs = async (nftContract) => {
     try {
       setError('');
-      setAssets([]);
+      setNfts([]);
 
-      // Fetch metadata for each asset
-      const assetMetadataPromises = foundAssets.map(async (asset) => {
-        const response = await fetch(asset.uri);
-        const metadata = await response.json();
-        return { ...asset, metadata };
-      });
+      const totalNFTs = await nftContract.getTotalMintedNFTs();
+      const allTokenURIs = await nftContract.getAllTokenURIs();
 
-      const assetsWithMetadata = await Promise.all(assetMetadataPromises);
-      setAssets(assetsWithMetadata);
-    } catch (error) {
-      console.error('Error fetching assets by owner:', error);
-      setError(
-        'Error fetching assets. Please check the public key and try again.'
+      const nftPromises = Array.from(
+        { length: totalNFTs.toNumber() },
+        async (_, index) => {
+          const tokenId = await nftContract.allTokenIds(index);
+          const price = await nftContract.nftPrices(tokenId);
+          const uri = allTokenURIs[index];
+
+          try {
+            const response = await fetch(uri);
+            const metadata = await response.json();
+
+            return {
+              id: tokenId.toString(),
+              price: ethers.formatEther(price),
+              metadata,
+            };
+          } catch (error) {
+            console.error(`Error fetching metadata for NFT ${tokenId}:`, error);
+            return null;
+          }
+        }
       );
+
+      const nftData = (await Promise.all(nftPromises)).filter(Boolean);
+
+      setNfts(nftData);
+    } catch (error) {
+      console.error('Error fetching NFTs:', error);
+      setError('Error fetching NFTs. Please try again later.');
     }
   };
 
-  const NftCard = () => {
-    return (
-      <div className="nft-card text-black" onClick={handleClick}>
-        <img
-          src={metadata?.image || 'https://via.placeholder.com/150'}
-          alt={metadata?.name || 'NFT Image'}
-          className="nft-image"
-        />
-        <h3 className="nft-title">{metadata?.name || 'Unnamed NFT'}</h3>
-        <p className="nft-description">
-          {metadata?.description || 'No description'}
-        </p>
-        <p className="nft-price">{metadata?.price || '0'} SOL</p>
-      </div>
-    );
-  };
+  const NftCard = ({ nft }) => (
+    <div className="nft-card">
+      <img
+        src={nft.metadata.image || 'https://via.placeholder.com/150'}
+        alt={nft.metadata.name || 'NFT Image'}
+        className="nft-image"
+      />
+      <h3 className="nft-title">{nft.metadata.name || 'Unnamed NFT'}</h3>
+      <p className="nft-description">
+        {nft.metadata.description || 'No description'}
+      </p>
+      <p className="nft-price">{nft.price} ETH</p>
+    </div>
+  );
 
   return (
     <div className="left-sidebar">
-      <h2 className="sidebar-title text-black">NFT Assets</h2>
-      {wallet.connected ? (
-        <div className="nft-list">
-          {assets.length > 0 ? (
-            assets.map((asset, index) => <NftCard key={index} asset={asset} />)
-          ) : (
-            <p className="no-assets">No assets found or loading...</p>
-          )}
-        </div>
-      ) : (
-        <p className="connect-wallet">
-          Please connect your wallet to view your NFT assets.
-        </p>
-      )}
+      <h2 className="sidebar-title">NFT Marketplace</h2>
+      <div className="nft-list">
+        {nfts.length > 0 ? (
+          nfts.map((nft) => <NftCard key={nft.id} nft={nft} />)
+        ) : (
+          <p className="no-assets">No NFTs found or loading...</p>
+        )}
+      </div>
       {error && <p className="error-message">{error}</p>}
       <style jsx>{`
         .left-sidebar {
@@ -79,13 +133,12 @@ export default function LeftSidebar() {
           border-right: 1px solid #ccc;
           overflow-y: auto;
           padding: 1rem;
-          position: absolute;
-          left: 0;
         }
         .sidebar-title {
           font-size: 1.2rem;
           font-weight: bold;
           margin-bottom: 1rem;
+          color: #333;
         }
         .nft-list {
           display: flex;
@@ -114,17 +167,17 @@ export default function LeftSidebar() {
           font-size: 0.9rem;
           font-weight: bold;
           margin: 0 0 0.25rem 0;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
+          color: #333;
         }
         .nft-description {
           font-size: 0.8rem;
           color: #666;
           margin: 0 0 0.25rem 0;
-          white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
         }
         .nft-price {
           font-size: 0.8rem;
@@ -132,8 +185,7 @@ export default function LeftSidebar() {
           color: #4a4a4a;
           margin: 0;
         }
-        .no-assets,
-        .connect-wallet {
+        .no-assets {
           font-size: 0.9rem;
           color: #666;
         }

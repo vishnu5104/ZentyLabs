@@ -5,7 +5,7 @@ const SaveMainMenuButton = () => {
     EventBus.emit('save-main-menu'); // Emit save-main-menu event
   };
 
-  return <button onClick={handleSaveMainMenu}>Save Main Menu</button>;
+  return <button onClick={handleSaveMainMenu}>Add NFT to Play</button>;
 };
 
 export default SaveMainMenuButton;

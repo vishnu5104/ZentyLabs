@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-import { Search, Filter, ChevronDown } from 'lucide-react';
+import { Search, Filter, ChevronDown, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -11,69 +11,24 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-
 import { useRouter } from 'next/navigation';
 
-const contractABI = [
-  {
-    inputs: [
-      {
-        internalType: 'contract IERC20',
-        name: '_paymentToken',
-        type: 'address',
-      },
-    ],
-    stateMutability: 'nonpayable',
-    type: 'constructor',
-  },
-  {
-    inputs: [],
-    name: 'getAllMintedNFTs',
-    outputs: [{ internalType: 'uint256[]', name: '', type: 'uint256[]' }],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'getAllTokenURIs',
-    outputs: [{ internalType: 'string[]', name: '', type: 'string[]' }],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'getTotalMintedNFTs',
-    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
-    name: 'buyNFT',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-    name: 'nftPrices',
-    outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'paymentToken',
-    outputs: [{ internalType: 'contract IERC20', name: '', type: 'address' }],
-    stateMutability: 'view',
-    type: 'function',
-  },
-];
+const contractAddress = '0x2688385CfE28ae2693c8232B0ba1E5246A332A00';
 
-const contractAddress = '0x28045BAF8af06cdc5cd0caBe15BE4520012D8198';
-const paymentTokenABI = [
-  'function approve(address spender, uint256 amount) public returns (bool)',
-  'function allowance(address owner, address spender) public view returns (uint256)',
+const contractABI = [
+  'function currentTokenId() view returns (uint256)',
+  'function nftPrices(uint256) view returns (uint256)',
+  'function allTokenIds(uint256) view returns (uint256)',
+  'function mintNFT(string memory tokenURI, uint256 priceInWei)',
+  'function buyNFT(uint256 tokenId) payable',
+  'function updateNFTPrice(uint256 tokenId, uint256 newPriceInWei)',
+  'function getAllMintedNFTs() view returns (uint256[] memory)',
+  'function getTotalMintedNFTs() view returns (uint256)',
+  'function getAllTokenURIs() view returns (string[] memory)',
+  'function getUserOwnedNFTs(address user) view returns (uint256[] memory)',
+  'function isowner(address owner, uint256 ownertokenID) view returns (bool)',
+  'function getUserOwnedNFTURIs(address user) view returns (string[] memory)',
+  'function tokenURI(uint256 tokenId) view returns (string memory)',
 ];
 
 export default function NFTMarketplace() {
@@ -81,7 +36,7 @@ export default function NFTMarketplace() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('price');
   const [contract, setContract] = useState(null);
-  const [paymentToken, setPaymentToken] = useState(null);
+  const [account, setAccount] = useState(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -97,15 +52,7 @@ export default function NFTMarketplace() {
             signer
           );
           setContract(nftContract);
-
-          // Fetch payment token address
-          const paymentTokenAddress = await nftContract.paymentToken();
-          const paymentTokenContract = new ethers.Contract(
-            paymentTokenAddress,
-            paymentTokenABI,
-            signer
-          );
-          setPaymentToken(paymentTokenContract);
+          setAccount(await signer.getAddress());
 
           fetchNFTs(nftContract);
         } catch (error) {
@@ -119,30 +66,22 @@ export default function NFTMarketplace() {
     initializeContract();
   }, []);
 
-  const handleCardClick = (nft) => {
-    router.push(`/nft/${nft.id}?${new URLSearchParams(nft).toString()}`);
-  };
-
   const fetchNFTs = async (nftContract) => {
     try {
-      const tokenURIsResponse = await nftContract.getAllTokenURIs();
-      console.log('the uris', tokenURIsResponse);
-      const tokenURIs = tokenURIsResponse[0].split(',');
       const tokenIds = await nftContract.getAllMintedNFTs();
 
       const nftData = await Promise.all(
-        tokenIds.map(async (tokenId, index) => {
-          const uri = tokenURIs[index];
-          const response = await fetch(uri);
-          const metadata = await response.json();
+        tokenIds.map(async (tokenId) => {
+          const tokenURI = await nftContract.tokenURI(tokenId);
           const price = await nftContract.nftPrices(tokenId);
+          const metadata = await fetch(tokenURI).then((res) => res.json());
           return {
             id: tokenId.toString(),
             title: metadata.name,
             description: metadata.description,
             image: metadata.image,
             price: ethers.formatEther(price),
-            creator: metadata.creator || 'Unknown',
+            creator: '0xujnf',
             attributes: metadata.attributes || [],
           };
         })
@@ -153,29 +92,29 @@ export default function NFTMarketplace() {
     }
   };
 
+  const handleCardClick = (nft) => {
+    router.push(`/nft/${nft.id}?${new URLSearchParams(nft).toString()}`);
+  };
+
   const buyNFT = async (tokenId) => {
-    if (!contract || !paymentToken) return;
+    if (!contract) return;
     try {
       const price = await contract.nftPrices(tokenId);
-      const signer = await contract.runner.provider.getSigner();
-      const signerAddress = await signer.getAddress();
-      const allowance = await paymentToken.allowance(
-        signerAddress,
-        contractAddress
-      );
-
-      if (allowance < price) {
-        const approveTx = await paymentToken.approve(contractAddress, price);
-        await approveTx.wait();
-      }
-
-      const transaction = await contract.buyNFT(tokenId);
+      const transaction = await contract.buyNFT(tokenId, { value: price });
       await transaction.wait();
       console.log('NFT purchased successfully!');
       fetchNFTs(contract);
     } catch (error) {
       console.error('Error buying NFT:', error);
     }
+  };
+
+  const handleCreateNFT = () => {
+    router.push('/create-nft');
+  };
+
+  const handleGame = () => {
+    router.push('/gamebuilder');
   };
 
   const filteredNFTs = nfts
@@ -225,6 +164,14 @@ export default function NFTMarketplace() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <Button onClick={handleCreateNFT} className="w-full sm:w-auto">
+            <Plus className="mr-2" size={20} />
+            Create NFT
+          </Button>
+          <Button onClick={handleGame} className="w-full sm:w-auto">
+            <Plus className="mr-2" size={20} />
+            Monetize Game
+          </Button>
         </div>
       </header>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -254,8 +201,22 @@ export default function NFTMarketplace() {
                 ))}
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-lg font-bold">{nft.price} Tokens</span>
-                <Button onClick={() => buyNFT(nft.id)}>Buy Now</Button>
+                <span className="text-lg font-bold">{nft.price} ETH</span>
+                {nft.creator.toLowerCase() !== account?.toLowerCase() && (
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      buyNFT(nft.id);
+                    }}
+                  >
+                    Buy Now
+                  </Button>
+                )}
+                {nft.creator.toLowerCase() === account?.toLowerCase() && (
+                  <span className="text-sm text-gray-500">
+                    You own this NFT
+                  </span>
+                )}
               </div>
             </div>
           </div>

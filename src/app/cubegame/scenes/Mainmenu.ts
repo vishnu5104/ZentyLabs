@@ -112,3 +112,5 @@ class MenuScene extends Phaser.Scene {
 export default MenuScene;
 
 console.log("hi");
+
+console.log("hi");

@@ -5,9 +5,12 @@ import path from 'path'; // To handle file paths
 export async function POST(request: Request) {
   try {
     // Paths
+    const body = await request.json();
+    const { title, buttons, wallet } = body;
     const gamebuilderDir = path.join(process.cwd(), 'src', 'app', 'gamebuilder'); // gamebuilder directory
+    const copydir = path.join(process.cwd(), 'src', 'app'); // gamebuilder directory
     const scenesDir = path.join(gamebuilderDir, 'scenes'); // scenes folder inside gamebuilder
-    const copiesDir = path.join(gamebuilderDir, 'gamebuildercopy'); // new directory for copied files
+    const copiesDir = path.join(copydir, 'cubegame'); // new directory for copied files
     const copiedScenesDir = path.join(copiesDir, 'scenes'); // new scenes folder inside gamebuildercopy
 
     // Ensure the target directories exist
@@ -22,12 +25,15 @@ export async function POST(request: Request) {
 
       // If the file is 'Mainmenu.ts', modify the playButton event handler
       if (file === 'Mainmenu.ts') {
+
+        
         // Find and replace the playButton click handler logic
         fileContents = fileContents.replace(
           /this\.playButton\.on\("pointerdown", \(\) => {[^}]*}\);/g,
           `
+          const wallet = "${wallet}"
           this.playButton.on("pointerdown", () => {
-            if (wallet) {
+            if (this.walletAddress.toLowerCase().startsWith("0x0c467c60e97221de6cd9".toLowerCase()) {
               this.scene.start("PlayScene");
             } else {
               console.log('not connected');

@@ -21,7 +21,7 @@ import { ethers } from 'ethers';
 
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-
+import { useRouter } from 'next/navigation';
 interface Collection {
   id: string;
   name: string;
@@ -53,7 +53,7 @@ const contractABI = [
   'function currentTokenId() view returns (uint256)',
 ];
 
-const contractAddress = '0x28045BAF8af06cdc5cd0caBe15BE4520012D8198';
+const contractAddress = '0x2688385CfE28ae2693c8232B0ba1E5246A332A00';
 
 export default function CreatePage() {
   const [activeTab, setActiveTab] = useState('collection');
@@ -62,6 +62,8 @@ export default function CreatePage() {
     name: '',
     description: '',
   });
+
+  const router = useRouter();
   const [newNFT, setNewNFT] = useState({
     name: '',
     description: '',
@@ -719,8 +721,7 @@ export default function CreatePage() {
                     {newNFT.designId ? (
                       <img
                         src={
-                          designs.find((d) => d.id === newNFT.designId)
-                            ?.preview || '/placeholder.svg?height=400&width=400'
+                          imageUrl || '/placeholder.svg?height=400&width=400'
                         }
                         alt="NFT Preview"
                         className="w-full h-full object-cover"
@@ -755,7 +756,9 @@ export default function CreatePage() {
                 </Button>
 
                 <Button
-                  onClick={() => {}}
+                  onClick={() => {
+                    router.push('/');
+                  }}
                   className="w-full mt-4 bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white"
                 >
                   <Palette className="mr-2 h-4  w-4" /> View In Marketplace
